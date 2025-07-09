@@ -1,0 +1,53 @@
+ENV_TYPE
+dev
+ENV_NAME
+Note: ENV NAME should be max 3 alphabets like nvd, as1. Please don't provide special characters between alphabets. Capital letters are also not allowed.
+xyr
+PLATFORMAPI_BRANCH
+Platform Branch name
+master
+MWAPI_BRANCH
+Middleware Branch name
+master
+ANSIBLEV2_BRANCH
+Ansible V2 Branch Name
+staging
+CNC_BRANCH
+CNC branch name
+master
+PLATFORMUI_FRONTEND_BRANCH
+UX3 branch name
+master
+FLEXIBLE_UX3_BRANCH
+UX3 branch name
+master
+FMP_UX3_BRANCH
+UX3 branch name
+master
+UNIFIED_DESIGN_SYSTEM_BRANCH
+UX3 branch name
+master
+AGENCYOS_UX_BRANCH
+UX3 branch name
+master
+GUESTS_APP_UX3_BRANCH
+UX3 branch name
+ods-master
+COMM_BRANCH
+master
+EVENT_SERVICE_BRANCH
+ods-master
+AGENCYOS_BRANCH
+master
+SCANNERAPI_BRANCH
+master
+MW2_BRANCH
+main
+ANSICGSERVER_BRANCH
+master
+ANSICGSERVEROTHER_BRANCH
+master
+ANSICGPHPAPPS_BRANCH
+master
+ANSICGPHPAPPSOTHER_BRANCH
+master
