@@ -8,14 +8,14 @@ import random
 
 JENKINS_URL = 'https://jenkins.cloudways.services/'  # Replace with actual Jenkins URL
 JOB_NAME = 'CreateClusterNew'  # Job is inside 'environment' folder
-USERNAME = 'akushwaha@digitalocean.com'
-API_TOKEN = '110995fb61cec8e44ea2605cd9c9e25dfa'
+USERNAME = 'TESTEMAIL'
+API_TOKEN = 'TEST_TOKEN'
 
 # SSH Configuration for MySQL connection
 SSH_HOST = '35.171.114.236'
 SSH_PORT = 61
-SSH_USERNAME = 'akushwaha'
-SSH_KEY_PATH = '/Users/akushwaha/.do/cwssh/keys/cwssh'
+SSH_USERNAME = 'TESTUSERNAME'
+SSH_KEY_PATH = 'TEST/PATH'
 
 def read_user_params():
     """Read parameters from userParams.txt file"""
