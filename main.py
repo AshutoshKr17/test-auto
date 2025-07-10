@@ -8,14 +8,14 @@ import random
 
 JENKINS_URL = 'https://jenkins.cloudways.services/'  # Replace with actual Jenkins URL
 JOB_NAME = 'CreateClusterNew'  # Job is inside 'environment' folder
-USERNAME = 'TESTEMAIL'
-API_TOKEN = 'TEST_TOKEN'
+USERNAME = 'akushwaha@digitalocean.com'
+API_TOKEN = '110995fb61cec8e44ea2605cd9c9e25dfa'
 
 # SSH Configuration for MySQL connection
-SSH_HOST = 'TEST_IP'
-SSH_PORT = TEST_PORT
-SSH_USERNAME = 'TESTUSERNAME'
-SSH_KEY_PATH = 'TEST/PATH'
+SSH_HOST = '35.171.114.236'
+SSH_PORT = 61
+SSH_USERNAME = 'akushwaha'
+SSH_KEY_PATH = '/Users/akushwaha/.do/cwssh/keys/cwssh'
 
 def read_user_params():
     """Read parameters from userParams.txt file"""
@@ -125,7 +125,7 @@ def check_job_exists():
         return False
 
 def trigger_job(params):
-    """Trigger Jenkins job with parameters"""
+    """Trigger Jenkins job with parameters and return build number"""
     try:
         # For parameterized builds, use /buildWithParameters
         if params:
@@ -140,16 +140,67 @@ def trigger_job(params):
         
         if response.status_code == 201:
             print("✓ Job triggered successfully.")
-            return True
+            
+            # Get the queue item location from the response header
+            queue_location = response.headers.get('Location')
+            if queue_location:
+                print(f"Build queued at: {queue_location}")
+                # Extract build number from queue
+                build_number = get_build_number_from_queue(queue_location)
+                return build_number
+            else:
+                print("⚠️  No queue location in response, falling back to last build method")
+                return get_last_build_number()
+                
         elif response.status_code == 404:
             print("✗ Job trigger failed: 404 Not Found")
-            return False
+            return None
         else:
             print(f"✗ Failed to trigger job: {response.status_code}")
-            return False
+            return None
     except Exception as e:
         print(f"✗ Job trigger error: {e}")
-        return False
+        return None
+
+def get_build_number_from_queue(queue_location):
+    """Get build number from Jenkins queue location"""
+    try:
+        print("Waiting for build to start from queue...")
+        max_attempts = 30  # Wait up to 30 seconds for build to start
+        
+        for attempt in range(max_attempts):
+            try:
+                # Get queue item details
+                queue_response = requests.get(f"{queue_location}api/json", auth=(USERNAME, API_TOKEN), timeout=10)
+                
+                if queue_response.status_code == 200:
+                    queue_data = queue_response.json()
+                    
+                    # Check if build has started (executable field will contain build info)
+                    executable = queue_data.get('executable')
+                    if executable:
+                        build_number = executable.get('number')
+                        if build_number:
+                            print(f"✓ Build started with number: #{build_number}")
+                            return build_number
+                    
+                    # If still in queue, wait a bit
+                    print(f"  Attempt {attempt + 1}/{max_attempts}: Build still in queue...")
+                    time.sleep(1)
+                else:
+                    print(f"  Warning: Could not check queue status: {queue_response.status_code}")
+                    time.sleep(1)
+                    
+            except Exception as e:
+                print(f"  Error checking queue: {e}")
+                time.sleep(1)
+        
+        print("⚠️  Timeout waiting for build to start from queue, falling back to last build method")
+        return get_last_build_number()
+        
+    except Exception as e:
+        print(f"✗ Error getting build number from queue: {e}")
+        return get_last_build_number()
 
 def get_last_build_number():
     url = f"{JENKINS_URL}/job/Environments/job/{JOB_NAME}/api/json"
@@ -302,7 +353,7 @@ def test_mysql_connection(mysql_host, mysql_user, mysql_pass):
         return None, None
 
 def connect_and_work_with_database(mysql_host, database, mysql_user, mysql_pass):
-    """Connect to MySQL database and insert user data automatically"""
+    """Connect to MySQL database and show basic information"""
     local_port = random.randint(3308, 3320)
     tunnel_process = None
     
@@ -369,91 +420,11 @@ def connect_and_work_with_database(mysql_host, database, mysql_user, mysql_pass)
         for col in columns:
             print(f"  {col[0]} ({col[1]})")
         
-        # Insert the user data
-        print(f"\nInserting user data...")
-        
-        # User data to insert
-        user_data = (
-            10989367, 1, 'trial', 0, '', 'Ashutosh', 'Kushwaha', '', '', 
-            'test101@gmail.com', 'test101@gmail.com', '', '', '', '', 
-            'Germany', '', '', '89lW8Ft3Mc3OA', 1, '2025-07-09 06:51:24', 
-            '5.101.109.49', 'en', 'USD', 1, 0, '', '', 1, 1, 1, 0, '', 
-            '', 1, 0, '', 1, 0, 0, '', 0, '', '0000-00-00', '', 0, '', 
-            '', '', 0, 1, '', '', 0, '', 1, '', 0, 0, 1, 0, 0, 1, 
-            'cms2cms', 0, 'Ehawk Risk Score :0. Ehawk Risk Reasons :. Internal check failed due to Germany blocking..', 
-            '', 0, 0, '', 0, '', '', 0, '', 
-            'SaW5w0ZVrYM5bIckMl9lNt91Z9d5tkw0UFbV0wC5u2zhncnXV0tSI8iuZ7pX', 
-            '2025-07-09 06:51:24', '2025-07-09 12:12:12', '', '', '', '', 
-            1, 0, 'organic'
-        )
-        
-        # First, check if user already exists  
-        cursor.execute("SELECT COUNT(*) FROM users WHERE email = %s", ('test101@gmail.com',))
-        exists = cursor.fetchone()[0]
-        
-        if exists > 0:
-            print(f"  User with email test101@gmail.com already exists. Updating...")
-            # Update existing user
-            update_query = """
-            UPDATE users SET 
-                name = %s, last_name = %s, country_signup = %s, 
-                password = %s, status = %s, date = %s, user_ip = %s, 
-                language = %s, currency = %s, is_active = %s, 
-                updated_at = %s, channel = %s
-            WHERE email = %s
-            """
-            cursor.execute(update_query, (
-                'Ashutosh', 'Kushwaha', 'Germany', 
-                '89lW8Ft3Mc3OA', 1, '2025-07-09 06:51:24', '5.101.109.49', 
-                'en', 'USD', 1, '2025-07-09 12:12:12', 'organic', 'test101@gmail.com'
-            ))
-            print(f"  ✓ User updated successfully")
-        else:
-            print(f"  User with email test101@gmail.com does not exist. Inserting new user...")
-            # Insert new user with essential fields only
-            insert_query = """
-            INSERT INTO users (
-                name, last_name, email, email_label, country_signup, password, 
-                status, date, user_ip, language, currency, online, is_active, 
-                is_auto_charge, is_blocked, is_managed, vat_applied, business_type, 
-                first_login, flow_status, is_affiliate, reffered_by, contract_details, 
-                auth_date, auth_provider_type, auth_reference, auth_info, 
-                is_good_country, manual_verified, linkedin_profile, 
-                activation_code_used, users_type, api_id, is_authorized_with_id, 
-                is_registered_as_managed, is_reviewed, nutshell_id, paypal_allow, 
-                is_new_cng_user, nonpaying_notification_status, 
-                account_closed_status, account_closed_survey_status, tfa_status, 
-                funds_notification_status, created_at, updated_at, 
-                user_category_id, channel
-            ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-            )
-            """
-            cursor.execute(insert_query, (
-                'Ashutosh', 'Kushwaha', 'test101@gmail.com', 'test101@gmail.com',
-                'Germany', '89lW8Ft3Mc3OA', 1, '2025-07-09 06:51:24', '5.101.109.49', 
-                'en', 'USD', 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, '', '2025-07-09', 0, '', '', 
-                0, 1, '', 0, 1, '', 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 
-                '2025-07-09 06:51:24', '2025-07-09 12:12:12', 1, 'organic'
-            ))
-            print(f"  ✓ User inserted successfully")
-        
-        # Commit the changes
-        connection.commit()
-        
-        # Verify the insertion/update
-        cursor.execute("SELECT id_users, name, last_name, email, country_signup FROM users WHERE email = %s", ('test101@gmail.com',))
-        result = cursor.fetchone()
-        if result:
-            print(f"  ✓ Verification - User found: ID={result[0]}, Name={result[1]} {result[2]}, Email={result[3]}, Country={result[4]}")
-        else:
-            print(f"  ✗ Verification failed - User not found")
+        print(f"\n✓ Database connection successful! Ready for operations.")
         
         connection.close()
         tunnel_process.terminate()
-        print(f"\n✓ Database operation completed successfully!")
+        print(f"\n✓ Database connection completed successfully!")
         return True
         
     except Exception as e:
@@ -488,8 +459,8 @@ def connect_to_mysql_database(mysql_info):
                 print(f"  Host: {host}")
                 print(f"  Database: {database}")
                 
-                # Automatically insert user data
-                print(f"\nAutomatically inserting user data into users table...")
+                # Show database connection details
+                print(f"\nConnecting to database to verify connection...")
                 connect_and_work_with_database(host, database, mysql_user, mysql_pass)
                 
                 return True
@@ -501,33 +472,79 @@ def connect_to_mysql_database(mysql_info):
         print(f"✗ Error connecting to MySQL database: {e}")
         return False
 
-def check_existing_build(build_number):
-    """Check if a specific build exists and get its console output"""
+def check_existing_build_by_env_name(env_name):
+    """Check if a build exists (successful or building) for the given ENV_NAME"""
     try:
-        print(f"Checking if build #{build_number} exists...")
-        url = f"{JENKINS_URL}/job/Environments/job/{JOB_NAME}/{build_number}/api/json"
+        print(f"Checking for existing builds with ENV_NAME='{env_name}'...")
+        
+        # Get job information to find recent builds
+        url = f"{JENKINS_URL}/job/Environments/job/{JOB_NAME}/api/json"
         response = requests.get(url, auth=(USERNAME, API_TOKEN), timeout=10)
         
-        if response.status_code == 200:
-            build_info = response.json()
-            build_result = build_info.get('result', 'BUILDING')
+        if response.status_code != 200:
+            print(f"✗ Failed to get job information: {response.status_code}")
+            return None, None, None
+        
+        job_info = response.json()
+        builds = job_info.get('builds', [])
+        
+        if not builds:
+            print("✗ No builds found for this job")
+            return None, None, None
+        
+        print(f"Found {len(builds)} builds. Checking recent builds for ENV_NAME='{env_name}'...")
+        
+        # Check the last 10 builds to find one with matching ENV_NAME
+        for build in builds[:10]:  # Check last 10 builds
+            build_number = build['number']
+            build_url = build['url']
             
-            if build_result == 'SUCCESS':
-                print(f"✓ Build #{build_number} exists and completed successfully")
-                return True
-            elif build_result == 'BUILDING' or build_result is None:
-                print(f"⚠️  Build #{build_number} is still running")
-                return False
-            else:
-                print(f"⚠️  Build #{build_number} exists but failed with result: {build_result}")
-                return False
-        else:
-            print(f"✗ Build #{build_number} not found")
-            return False
-            
+            try:
+                # Get build details
+                build_detail_url = f"{build_url}api/json"
+                build_response = requests.get(build_detail_url, auth=(USERNAME, API_TOKEN), timeout=10)
+                
+                if build_response.status_code == 200:
+                    build_detail = build_response.json()
+                    result = build_detail.get('result')
+                    is_building = build_detail.get('building', False)
+                    
+                    # Get build parameters
+                    actions = build_detail.get('actions', [])
+                    
+                    for action in actions:
+                        if action.get('_class') == 'hudson.model.ParametersAction':
+                            parameters = action.get('parameters', [])
+                            
+                            for param in parameters:
+                                if param.get('name') == 'ENV_NAME' and param.get('value') == env_name:
+                                    if is_building or result is None:
+                                        print(f"✓ Found existing BUILDING build #{build_number} with ENV_NAME='{env_name}'")
+                                        return build_number, True, 'BUILDING'
+                                    elif result == 'SUCCESS':
+                                        print(f"✓ Found existing SUCCESSFUL build #{build_number} with ENV_NAME='{env_name}'")
+                                        return build_number, True, 'SUCCESS'
+                                    else:
+                                        print(f"  Build #{build_number}: {result} with ENV_NAME='{env_name}' (will create new)")
+                    
+                    # If we reach here, this build doesn't have our ENV_NAME
+                    if result == 'SUCCESS':
+                        print(f"  Build #{build_number}: SUCCESS but different ENV_NAME")
+                    else:
+                        print(f"  Build #{build_number}: {result or 'BUILDING'} with different ENV_NAME")
+                        
+            except Exception as e:
+                print(f"  Error checking build #{build_number}: {e}")
+                continue
+        
+        print(f"✗ No existing build found with ENV_NAME='{env_name}'")
+        return None, False, None
+        
     except Exception as e:
-        print(f"✗ Error checking build: {e}")
-        return False
+        print(f"✗ Error checking existing builds: {e}")
+        return None, False, None
+
+
 
 def fetch_console_output_for_build(build_number):
     """Fetch console output for a specific build number"""
@@ -544,32 +561,45 @@ def fetch_console_output_for_build(build_number):
         return None
 
 def main():
-    print("=== AUTOMATED MYSQL CONNECTION & USER INSERTION ===")
+    print("=== AUTOMATED MYSQL CONNECTION ===")
     
-    # Check if we should use an existing build
-    existing_build = 1782  # The build number you mentioned
+    # Read parameters first to get ENV_NAME
+    print("Reading parameters from userParams.txt...")
+    params = read_user_params()
+    if not params:
+        print("No parameters found or error reading file. Exiting.")
+        return
     
-    if check_existing_build(existing_build):
-        print(f"Using existing build #{existing_build}")
-        output = fetch_console_output_for_build(existing_build)
-        
-        if not output:
-            print("Failed to fetch console output from existing build")
-            return
+    print(f"\nFound {len(params)} parameters:")
+    for key, value in params.items():
+        print(f"  {key}: {value}")
+    
+    env_name = params.get('ENV_NAME')
+    if not env_name:
+        print("✗ ENV_NAME not found in parameters. Cannot proceed.")
+        return
+    
+    print(f"\nLooking for existing builds with ENV_NAME='{env_name}'...")
+    
+    # Check if we should use an existing build based on ENV_NAME
+    existing_build_number, build_exists, build_status = check_existing_build_by_env_name(env_name)
+    
+    if build_exists and existing_build_number:
+        if build_status == 'BUILDING':
+            print(f"Found existing BUILDING build #{existing_build_number} with ENV_NAME='{env_name}'")
+            print(f"Waiting for existing build #{existing_build_number} to complete instead of creating new build...")
+            build_number = existing_build_number
+            wait_for_job_completion(build_number)
+            output = fetch_console_output(build_number)
+        elif build_status == 'SUCCESS':
+            print(f"Using existing SUCCESSFUL build #{existing_build_number} with ENV_NAME='{env_name}'")
+            output = fetch_console_output_for_build(existing_build_number)
             
+            if not output:
+                print("Failed to fetch console output from existing build")
+                return
     else:
-        print("Existing build not found or not successful. Creating new build...")
-        
-        # Read parameters and create new build
-        print("Reading parameters from userParams.txt...")
-        params = read_user_params()
-        if not params:
-            print("No parameters found or error reading file. Exiting.")
-            return
-        
-        print(f"\nFound {len(params)} parameters:")
-        for key, value in params.items():
-            print(f"  {key}: {value}")
+        print(f"No existing build found with ENV_NAME='{env_name}'. Creating new build...")
         
         # Test Jenkins connection
         if not test_jenkins_connection():
@@ -582,15 +612,14 @@ def main():
             return
         
         # Trigger Jenkins job
-        print(f"\nTriggering Jenkins job '{JOB_NAME}'...")
-        if not trigger_job(params):
+        print(f"\nTriggering Jenkins job '{JOB_NAME}' with ENV_NAME='{env_name}'...")
+        build_number = trigger_job(params)
+        
+        if not build_number:
+            print("✗ Failed to trigger job or get build number. Exiting.")
             return
 
-        print("Waiting for Jenkins to register the build...")
-        time.sleep(5)
-        build_number = get_last_build_number()
-        print(f"Build number: {build_number}")
-
+        print(f"✓ Build #{build_number} triggered successfully")
         wait_for_job_completion(build_number)
         output = fetch_console_output(build_number)
 
